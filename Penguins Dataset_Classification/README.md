@@ -1,3 +1,5 @@
+# Chapter 7 Support Vector Machines Dash App
+
 # Support Vector Machine (SVM) Explorer [![Mentioned in Awesome Machine Learning](https://awesome.re/mentioned-badge.svg)](https://github.com/josephmisiti/awesome-machine-learning)
 
 Source link of this app: https://github.com/plotly/dash-sample-apps/tree/main/apps/dash-svm
@@ -72,5 +74,3 @@ An SVM is a popular Machine Learning model used in many different fields. You ca
 The heatmap configuration is heavily inspired from the [scikit-learn Classification Comparison Tutorial](http://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html). Please go take a look!
 
 The idea of the [ROC Curve, the Matrix Pie Chart and Thresholding](https://github.com/nicolaskruchten/dash-roc) came from @nickruchten. The app would not have been as complete without his insightful advice.
-
-
