@@ -1,15 +1,16 @@
 import colorlover as cl
+import pandas as pd
 import plotly.graph_objs as go
 import numpy as np
 from sklearn import metrics
 
 
 def serve_prediction_plot(
-    model, X_train, X_test, y_train, y_test, Z, xx, yy, mesh_step, threshold
+        model, X_train, X_test, y_train, y_test, Z, xx, yy, mesh_step, threshold
 ):
     # Get train and test score from model
-    y_pred_train = (model.decision_function(X_train) > threshold).astype(int)
-    y_pred_test = (model.decision_function(X_test) > threshold).astype(int)
+    y_pred_train = model.predict(X_train)
+    y_pred_test = model.predict(X_test)
     train_score = metrics.accuracy_score(y_true=y_train, y_pred=y_pred_train)
     test_score = metrics.accuracy_score(y_true=y_test, y_pred=y_pred_test)
 
@@ -98,10 +99,10 @@ def serve_prediction_plot(
 
 def serve_roc_curve(model, X_test, y_test):
     decision_test = model.decision_function(X_test)
-    fpr, tpr, threshold = metrics.roc_curve(y_test, decision_test)
+    fpr, tpr, threshold = metrics.roc_curve(y_test, decision_test[:, 1])
 
     # AUC Score
-    auc_score = metrics.roc_auc_score(y_true=y_test, y_score=decision_test)
+    auc_score = metrics.roc_auc_score(y_true=y_test, y_score=decision_test, multi_class='ovr')
 
     trace0 = go.Scatter(
         x=fpr, y=tpr, mode="lines", name="Test Data", marker={"color": "#13c6e9"}
@@ -124,7 +125,7 @@ def serve_roc_curve(model, X_test, y_test):
     return figure
 
 
-def serve_pie_confusion_matrix(model, X_test, y_test, Z, threshold):
+def serve_confusion_matrix_table(model, X_test, y_test, Z, threshold):
     # Compute threshold
     scaled_threshold = threshold * (Z.max() - Z.min()) + Z.min()
     y_pred_test = (model.decision_function(X_test) > scaled_threshold).astype(int)
@@ -132,35 +133,41 @@ def serve_pie_confusion_matrix(model, X_test, y_test, Z, threshold):
     matrix = metrics.confusion_matrix(y_true=y_test, y_pred=y_pred_test)
     tn, fp, fn, tp = matrix.ravel()
 
-    values = [tp, fn, fp, tn]
-    label_text = ["True Positive", "False Negative", "False Positive", "True Negative"]
-    labels = ["TP", "FN", "FP", "TN"]
-    blue = cl.flipper()["seq"]["9"]["Blues"]
-    red = cl.flipper()["seq"]["9"]["Reds"]
-    colors = ["#13c6e9", blue[1], "#ff916d", "#ff744c"]
+    # values = [tp, fn, fp, tn]
+    # label_text = ["True Positive", "False Negative", "False Positive", "True Negative"]
+    # labels = ["TP", "FN", "FP", "TN"]
+    # blue = cl.flipper()["seq"]["9"]["Blues"]
+    # red = cl.flipper()["seq"]["9"]["Reds"]
+    # colors = ["#13c6e9", blue[1], "#ff916d", "#ff744c"]
 
-    trace0 = go.Pie(
-        labels=label_text,
-        values=values,
-        hoverinfo="label+value+percent",
-        textinfo="text+value",
-        text=labels,
-        sort=False,
-        marker=dict(colors=colors),
-        insidetextfont={"color": "white"},
-        rotation=90,
-    )
+    # Table representation for the dataframe
+    confusion_matrix_df = pd.DataFrame([[tp, fn], [fp, tn]],
+                                       columns=['True Positive', 'True Negative'],
+                                       index=['False Positive', 'False Negative'])
 
-    layout = go.Layout(
-        title="Confusion Matrix",
-        margin=dict(l=50, r=50, t=100, b=10),
-        legend=dict(bgcolor="#282b38", font={"color": "#a5b1cd"}, orientation="h"),
-        plot_bgcolor="#282b38",
-        paper_bgcolor="#282b38",
-        font={"color": "#a5b1cd"},
-    )
+    # trace0 = go.Pie(
+    #     labels=label_text,
+    #     values=values,
+    #     hoverinfo="label+value+percent",
+    #     textinfo="text+value",
+    #     text=labels,
+    #     sort=False,
+    #     marker=dict(colors=colors),
+    #     insidetextfont={"color": "white"},
+    #     rotation=90,
+    # )
+    #
+    #  layout = go.Layout(
+    #     title="Confusion Matrix",
+    #     margin=dict(l=50, r=50, t=100, b=10),
+    #     legend=dict(bgcolor="#282b38", font={"color": "#a5b1cd"}, orientation="h"),
+    #     plot_bgcolor="#282b38",
+    #     paper_bgcolor="#282b38",
+    #     font={"color": "#a5b1cd"},
+    # )
+    #
+    # data = [trace0]
+    # figure = go.Figure(data=data, layout=layout)
 
-    data = [trace0]
-    figure = go.Figure(data=data, layout=layout)
+    return confusion_matrix_df
 
-    return figure

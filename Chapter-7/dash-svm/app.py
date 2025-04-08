@@ -1,12 +1,16 @@
 import time
-import importlib
 
+import dash
+import dash_bootstrap_components as dbc
+import importlib
+import dash.dash_table as dt
 from dash import Dash, dcc, html, Input, Output, State
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn import datasets
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.svm import SVC
+import palmerpenguins
+from sklearn.model_selection import train_test_split
 
 import utils.dash_reusable_components as drc
 import utils.figures as figs
@@ -14,43 +18,49 @@ import utils.figures as figs
 app = Dash(
     __name__,
     meta_tags=[
-        {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
+        {"name": "viewport", "content": "width=device-width, initial-scale=1.0"},
     ],
 )
 app.title = "Support Vector Machine"
 server = app.server
 
+penguins_df = palmerpenguins.load_penguins()
+columns_to_exclude = ['species', 'year', 'sex']
+remaining_columns = penguins_df.columns.difference(columns_to_exclude)
+penguins_df_cleaning = penguins_df.dropna()
+print(penguins_df_cleaning.head())
 
-def generate_data(n_samples, dataset, noise):
-    if dataset == "moons":
-        return datasets.make_moons(n_samples=n_samples, noise=noise, random_state=0)
+x_axis_dropdown = html.Div([
+    html.Label('Select X-Axis Column'),
+    dcc.Dropdown(
+        id='x_column_species',
+        options=[{'label': str(i), 'value': i} for i in sorted(penguins_df[remaining_columns])],
+        value=sorted(penguins_df.columns)[0],  # Default to first value
+        clearable=False,
+        style={'width': '100%'}
+    ), ])
 
-    elif dataset == "circles":
-        return datasets.make_circles(
-            n_samples=n_samples, noise=noise, factor=0.5, random_state=1
-        )
+y_axis_dropdown = html.Div([
+    html.Label('Select Y-Axis Column'),
+    dcc.Dropdown(
+        id='y_column_species',
+        options=[{'label': str(i), 'value': i} for i in sorted(penguins_df[remaining_columns])],
+        value=sorted(penguins_df.columns)[1],  # Default to first value
+        clearable=False,
+        style={'width': '100%'}
+    ), ])
+# print(penguins_df_cleaning[remaining_columns])
+# STARTING WORKING ON MACHINE LEARNING (YAYY)
+row_count = len(penguins_df_cleaning)
+print(row_count)
+# label and encode the target species into numeric value
 
-    elif dataset == "linear":
-        X, y = datasets.make_classification(
-            n_samples=n_samples,
-            n_features=2,
-            n_redundant=0,
-            n_informative=2,
-            random_state=2,
-            n_clusters_per_class=1,
-        )
+# model = LogisticRegression(max_iter=200)
+# model.fit(x_train_scaled, y_train)
+# The species are Adelie, Gentoo, Chinstrap
+# print(penguins_df['species'].values)
 
-        rng = np.random.RandomState(2)
-        X += noise * rng.uniform(size=X.shape)
-        linearly_separable = (X, y)
-
-        return linearly_separable
-
-    else:
-        raise ValueError(
-            "Data type incorrectly specified. Please choose an existing dataset."
-        )
-
+# [Find a place where to add this in the layout and remove what is being displayed ]
 
 app.layout = html.Div(
     children=[
@@ -67,8 +77,7 @@ app.layout = html.Div(
                             id="banner-title",
                             children=[
                                 html.A(
-                                    "Support Vector Machine (SVM) Explorer",
-                                    href="https://github.com/plotly/dash-svm",
+                                    "SVM Explorer for Palmer Penguins",
                                     style={
                                         "text-decoration": "none",
                                         "color": "inherit",
@@ -76,13 +85,7 @@ app.layout = html.Div(
                                 )
                             ],
                         ),
-                        html.A(
-                            id="banner-logo",
-                            children=[
-                                html.Img(src=app.get_asset_url("dash-logo-new.png"))
-                            ],
-                            href="https://plot.ly/products/dash/",
-                        ),
+
                     ],
                 )
             ],
@@ -102,35 +105,19 @@ app.layout = html.Div(
                                 drc.Card(
                                     id="first-card",
                                     children=[
-                                        drc.NamedDropdown(
-                                            name="Select Dataset",
-                                            id="dropdown-select-dataset",
-                                            options=[
-                                                {"label": "Moons", "value": "moons"},
-                                                {
-                                                    "label": "Linearly Separable",
-                                                    "value": "linear",
-                                                },
-                                                {
-                                                    "label": "Circles",
-                                                    "value": "circles",
-                                                },
-                                            ],
-                                            clearable=False,
-                                            searchable=False,
-                                            value="moons",
-                                        ),
+                                        x_axis_dropdown,
+                                        y_axis_dropdown,
                                         drc.NamedSlider(
                                             name="Sample Size",
                                             id="slider-dataset-sample-size",
                                             min=100,
-                                            max=500,
-                                            step=100,
+                                            max=333,
+                                            step=50,
                                             marks={
                                                 str(i): str(i)
-                                                for i in [100, 200, 300, 400, 500]
+                                                for i in [50, 100, 150, 200, 250, 300]
                                             },
-                                            value=300,
+                                            value=150,
                                         ),
                                         drc.NamedSlider(
                                             name="Noise Level",
@@ -144,8 +131,14 @@ app.layout = html.Div(
                                             step=0.1,
                                             value=0.2,
                                         ),
+                                        html.Button(
+                                            "Default Button",
+                                            id="button-default",
+                                            n_clicks=0,
+                                        ),
                                     ],
                                 ),
+
                                 drc.Card(
                                     id="button-card",
                                     children=[
@@ -262,13 +255,14 @@ app.layout = html.Div(
                             ],
                         ),
                         html.Div(
-                            id="div-graphs",
+                            id="prediction-graph",
                             children=dcc.Graph(
-                                id="graph-sklearn-svm",
+                                id="graph-prediction",
                                 figure=dict(
                                     layout=dict(
                                         plot_bgcolor="#282b38", paper_bgcolor="#282b38"
-                                    )
+                                    ),
+
                                 ),
                             ),
                         ),
@@ -298,13 +292,37 @@ def update_slider_svm_parameter_C_coef(power):
     return {i: str(round(i * scale, 8)) for i in range(1, 10, 2)}
 
 
+# Callback for the Default Button
+
+
+@app.callback(
+    Output("dropdown-svm-parameter-kernel", "value", allow_duplicate=True),
+    Output("slider-svm-parameter-degree", "value", allow_duplicate=True),
+    Output("slider-svm-parameter-C-coef", "value", allow_duplicate=True),
+    Output("slider-svm-parameter-C-power", "value", allow_duplicate=True),
+    Output("slider-svm-parameter-gamma-coef", "value", allow_duplicate=True),
+    Output("slider-svm-parameter-gamma-power", "value", allow_duplicate=True),
+    Output("slider-dataset-noise-level", "value", allow_duplicate=True),
+    Output("radio-svm-parameter-shrinking", "value", allow_duplicate=True),
+    Output("slider-threshold", "value", allow_duplicate=True),
+    Output("slider-dataset-sample-size", "value", allow_duplicate=True),
+    [Input('button-default', 'n_clicks')],
+    prevent_initial_call=True
+)
+def reset_default(n_clicks):
+    if n_clicks > 0:
+        return 'rbf', 3, 1, 0, 5, -1, 0.2, 'True', 0.5, 300
+    return dash.no_update
+
+
 @app.callback(
     Output("slider-threshold", "value"),
     [Input("button-zero-threshold", "n_clicks")],
-    [State("graph-sklearn-svm", "figure")],
+    [State("graph-prediction", "figure")],
 )
 def reset_threshold_center(n_clicks, figure):
     if n_clicks:
+        print('Debugging Z:', figure["data"][0]["z"])
         Z = np.array(figure["data"][0]["z"])
         value = -Z.min() / (Z.max() - Z.min())
     else:
@@ -338,94 +356,103 @@ def disable_slider_param_gamma_power(kernel):
 
 
 @app.callback(
-    Output("div-graphs", "children"),
+    Output("prediction-graph", "children"),
     [
+        Input('x_column_species', 'value'),
+        Input('y_column_species', 'value'),
         Input("dropdown-svm-parameter-kernel", "value"),
         Input("slider-svm-parameter-degree", "value"),
         Input("slider-svm-parameter-C-coef", "value"),
         Input("slider-svm-parameter-C-power", "value"),
         Input("slider-svm-parameter-gamma-coef", "value"),
         Input("slider-svm-parameter-gamma-power", "value"),
-        Input("dropdown-select-dataset", "value"),
         Input("slider-dataset-noise-level", "value"),
         Input("radio-svm-parameter-shrinking", "value"),
         Input("slider-threshold", "value"),
-        Input("slider-dataset-sample-size", "value"),
     ],
 )
 def update_svm_graph(
-    kernel,
-    degree,
-    C_coef,
-    C_power,
-    gamma_coef,
-    gamma_power,
-    dataset,
-    noise,
-    shrinking,
-    threshold,
-    sample_size,
+        x_column,
+        y_column,
+        kernel,
+        degree,
+        C_coef,
+        C_power,
+        gamma_coef,
+        gamma_power,
+        noise,
+        shrinking,
+        threshold,
 ):
+    if threshold is None:
+        threshold = 0.5
     t_start = time.time()
     h = 0.3  # step size in the mesh
-
-    # Data Pre-processing
-    X, y = generate_data(n_samples=sample_size, dataset=dataset, noise=noise)
-    X = StandardScaler().fit_transform(X)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.4, random_state=42
-    )
-
-    x_min = X[:, 0].min() - 0.5
-    x_max = X[:, 0].max() + 0.5
-    y_min = X[:, 1].min() - 0.5
-    y_max = X[:, 1].max() + 0.5
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
-
-    C = C_coef * 10 ** C_power
-    gamma = gamma_coef * 10 ** gamma_power
-
     if shrinking == "True":
         flag = True
     else:
         flag = False
 
-    # Train SVM
-    clf = SVC(C=C, kernel=kernel, degree=degree, gamma=gamma, shrinking=flag)
-    clf.fit(X_train, y_train)
+    # Data Pre-processing
+    X = penguins_df_cleaning[[x_column, y_column]]
+    y = penguins_df_cleaning['species']
+    # Apply encoding
+    encoder = LabelEncoder()
 
-    # Plot the decision boundary. For that, we will assign a color to each
-    # point in the mesh [x_min, x_max]x[y_min, y_max].
-    if hasattr(clf, "decision_function"):
-        Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
-    else:
-        Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+    for col in X.columns:
+        if X[col].dtype == 'object':
+            X.loc[:, col] = encoder.fit_transform(X[col])
+    y_encoded = encoder.fit_transform(y)
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.3, random_state=42)
+
+    # Train the logistic regression model, because the flipper length and some other factors might be in different
+    # lengths or sizes
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    # Train the model
+    C = C_coef * 10 ** C_power
+    gamma = gamma_coef * 10 ** gamma_power
+    clf = SVC(C=C, kernel=kernel, degree=degree, gamma=gamma, shrinking=flag)
+    clf.fit(X_train_scaled, y_train)
+
+    # Create the mesh grid for the decision boundary
+    x_min, x_max = X_train_scaled[:, 0].min() - 1, X_train_scaled[:, 0].max() + 1
+    y_min, y_max = X_train_scaled[:, 1].min() - 1, X_train_scaled[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+    z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+    z = z.reshape(xx.shape)
 
     prediction_figure = figs.serve_prediction_plot(
         model=clf,
-        X_train=X_train,
-        X_test=X_test,
+        X_train=X_train_scaled,
+        X_test=X_test_scaled,
         y_train=y_train,
         y_test=y_test,
-        Z=Z,
+        Z=z,
         xx=xx,
         yy=yy,
         mesh_step=h,
         threshold=threshold,
     )
 
-    roc_figure = figs.serve_roc_curve(model=clf, X_test=X_test, y_test=y_test)
+    roc_figure = figs.serve_roc_curve(model=clf, X_test=X_test_scaled, y_test=y_test)
 
-    confusion_figure = figs.serve_pie_confusion_matrix(
-        model=clf, X_test=X_test, y_test=y_test, Z=Z, threshold=threshold
+    confusion_figure = figs.serve_confusion_matrix_table(
+        model=clf, X_test=X_test_scaled, y_test=y_test, Z=z, threshold=threshold
     )
+    confusion_table_data = confusion_figure.reset_index().to_dict('records')
+    confusion_table_columns = [{'name': col, 'id': col} for col in confusion_figure.columns]
+    confusion_table_columns.insert(0, {'name': 'Prediction/Actual', 'id': 'index'})
 
     return [
         html.Div(
             id="svm-graph-container",
             children=dcc.Loading(
                 className="graph-wrapper",
-                children=dcc.Graph(id="graph-sklearn-svm", figure=prediction_figure),
+                children=dcc.Graph(id="graph-prediction", figure=prediction_figure),
                 style={"display": "none"},
             ),
         ),
@@ -437,9 +464,14 @@ def update_svm_graph(
                     children=dcc.Graph(id="graph-line-roc-curve", figure=roc_figure),
                 ),
                 dcc.Loading(
-                    className="graph-wrapper",
-                    children=dcc.Graph(
-                        id="graph-pie-confusion-matrix", figure=confusion_figure
+                    className='graph-wrapper',
+                    children=dt.DataTable(
+                        id='table-confusion-matrix',
+                        columns=confusion_table_columns,
+                        data=confusion_table_data,
+                        style_table={'margin': '20px', 'overflowX': 'auto'},
+                        style_cell={'textAlign': 'center'},
+                        style_header={'fontWeight': 'bold'},
                     ),
                 ),
             ],
@@ -449,4 +481,4 @@ def update_svm_graph(
 
 # Running the server
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run(debug=True)
