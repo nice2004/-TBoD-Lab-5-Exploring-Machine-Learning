@@ -3,6 +3,10 @@ import pandas as pd
 import plotly.graph_objs as go
 import numpy as np
 from sklearn import metrics
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import roc_curve, auc
+from matplotlib import pyplot as plt
+from sklearn.metrics import confusion_matrix
 
 
 def serve_prediction_plot(
@@ -98,76 +102,49 @@ def serve_prediction_plot(
 
 
 def serve_roc_curve(model, X_test, y_test):
-    decision_test = model.decision_function(X_test)
-    fpr, tpr, threshold = metrics.roc_curve(y_test, decision_test[:, 1])
+    # Binarize the output labels for multiclass classification
+    y_test_bin = label_binarize(y_test, classes=[0, 1, 2])  # assuming the 3 classes for the species
+    y_score = model.predict_proba(X_test)  # probability predictions for the classes
 
-    # AUC Score
-    auc_score = metrics.roc_auc_score(y_true=y_test, y_score=decision_test, multi_class='ovr')
+    species = {0: 'Adelie', 1: 'Chinstrap', 2: 'Gentoo'}
+    # Prepare the ROC curve for each class
+    fpr, tpr, roc_auc = dict(), dict(), dict()
+    for i in range(3):
+        fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
 
-    trace0 = go.Scatter(
-        x=fpr, y=tpr, mode="lines", name="Test Data", marker={"color": "#13c6e9"}
+    # Create the ROC curve plot using Plotly
+    fig = go.Figure()
+
+    for i in range(3):
+        species_mapping = species[i]
+        fig.add_trace(go.Scatter(
+            x=fpr[i], y=tpr[i],
+            mode='lines',
+            name=f'{species_mapping} (AUC = {roc_auc[i]:.2f})',
+            line=dict(width=2)
+        ))
+
+    # Format the layout
+    fig.update_layout(
+        title="Receiver Operating Characteristic (ROC) Curve for each class",
+        xaxis_title="False Positive Rate",
+        yaxis_title="True Positive Rate",
+        xaxis=dict(range=[0, 1]),
+        yaxis=dict(range=[0, 1]),
+        showlegend=True
     )
 
-    layout = go.Layout(
-        title=f"ROC Curve (AUC = {auc_score:.3f})",
-        xaxis=dict(title="False Positive Rate", gridcolor="#2f3445"),
-        yaxis=dict(title="True Positive Rate", gridcolor="#2f3445"),
-        legend=dict(x=0, y=1.05, orientation="h"),
-        margin=dict(l=100, r=10, t=25, b=40),
-        plot_bgcolor="#282b38",
-        paper_bgcolor="#282b38",
-        font={"color": "#a5b1cd"},
-    )
-
-    data = [trace0]
-    figure = go.Figure(data=data, layout=layout)
-
-    return figure
+    return fig
 
 
 def serve_confusion_matrix_table(model, X_test, y_test, Z, threshold):
-    # Compute threshold
-    scaled_threshold = threshold * (Z.max() - Z.min()) + Z.min()
-    y_pred_test = (model.decision_function(X_test) > scaled_threshold).astype(int)
-
+    # Predict the classes
+    y_pred_test = model.predict(X_test)
+    if isinstance(y_test, pd.Series):
+        y_test = y_test.values
     matrix = metrics.confusion_matrix(y_true=y_test, y_pred=y_pred_test)
-    tn, fp, fn, tp = matrix.ravel()
+    matrix_df = pd.DataFrame(matrix, index=[f'Class {i}' for i in range(len(matrix))],
+                             columns=[f'Pred {i}' for i in range(len(matrix[0]))])
 
-    # values = [tp, fn, fp, tn]
-    # label_text = ["True Positive", "False Negative", "False Positive", "True Negative"]
-    # labels = ["TP", "FN", "FP", "TN"]
-    # blue = cl.flipper()["seq"]["9"]["Blues"]
-    # red = cl.flipper()["seq"]["9"]["Reds"]
-    # colors = ["#13c6e9", blue[1], "#ff916d", "#ff744c"]
-
-    # Table representation for the dataframe
-    confusion_matrix_df = pd.DataFrame([[tp, fn], [fp, tn]],
-                                       columns=['True Positive', 'True Negative'],
-                                       index=['False Positive', 'False Negative'])
-
-    # trace0 = go.Pie(
-    #     labels=label_text,
-    #     values=values,
-    #     hoverinfo="label+value+percent",
-    #     textinfo="text+value",
-    #     text=labels,
-    #     sort=False,
-    #     marker=dict(colors=colors),
-    #     insidetextfont={"color": "white"},
-    #     rotation=90,
-    # )
-    #
-    #  layout = go.Layout(
-    #     title="Confusion Matrix",
-    #     margin=dict(l=50, r=50, t=100, b=10),
-    #     legend=dict(bgcolor="#282b38", font={"color": "#a5b1cd"}, orientation="h"),
-    #     plot_bgcolor="#282b38",
-    #     paper_bgcolor="#282b38",
-    #     font={"color": "#a5b1cd"},
-    # )
-    #
-    # data = [trace0]
-    # figure = go.Figure(data=data, layout=layout)
-
-    return confusion_matrix_df
-
+    return matrix_df

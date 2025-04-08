@@ -29,6 +29,7 @@ columns_to_exclude = ['species', 'year', 'sex']
 remaining_columns = penguins_df.columns.difference(columns_to_exclude)
 penguins_df_cleaning = penguins_df.dropna()
 print(penguins_df_cleaning.head())
+print(penguins_df_cleaning.columns)
 
 x_axis_dropdown = html.Div([
     html.Label('Select X-Axis Column'),
@@ -358,8 +359,8 @@ def disable_slider_param_gamma_power(kernel):
 @app.callback(
     Output("prediction-graph", "children"),
     [
-        Input('x_column_species', 'value'),
-        Input('y_column_species', 'value'),
+        #  Input('x_column_species', 'value'),
+        # Input('y_column_species', 'value'),
         Input("dropdown-svm-parameter-kernel", "value"),
         Input("slider-svm-parameter-degree", "value"),
         Input("slider-svm-parameter-C-coef", "value"),
@@ -369,11 +370,10 @@ def disable_slider_param_gamma_power(kernel):
         Input("slider-dataset-noise-level", "value"),
         Input("radio-svm-parameter-shrinking", "value"),
         Input("slider-threshold", "value"),
+       Input("slider-dataset-sample-size", "value"),
     ],
 )
 def update_svm_graph(
-        x_column,
-        y_column,
         kernel,
         degree,
         C_coef,
@@ -383,6 +383,7 @@ def update_svm_graph(
         noise,
         shrinking,
         threshold,
+        sample_size,
 ):
     if threshold is None:
         threshold = 0.5
@@ -392,10 +393,10 @@ def update_svm_graph(
         flag = True
     else:
         flag = False
-
+    sampled_data = penguins_df_cleaning.sample(n=sample_size, random_state=42)
     # Data Pre-processing
-    X = penguins_df_cleaning[[x_column, y_column]]
-    y = penguins_df_cleaning['species']
+    X = sampled_data[['bill_length_mm', 'flipper_length_mm']]
+    y = sampled_data['species']
     # Apply encoding
     encoder = LabelEncoder()
 
@@ -415,7 +416,7 @@ def update_svm_graph(
     # Train the model
     C = C_coef * 10 ** C_power
     gamma = gamma_coef * 10 ** gamma_power
-    clf = SVC(C=C, kernel=kernel, degree=degree, gamma=gamma, shrinking=flag)
+    clf = SVC(C=C, kernel=kernel, degree=degree, gamma=gamma, shrinking=flag, probability=True)
     clf.fit(X_train_scaled, y_train)
 
     # Create the mesh grid for the decision boundary
@@ -436,6 +437,10 @@ def update_svm_graph(
         yy=yy,
         mesh_step=h,
         threshold=threshold,
+    )
+    prediction_figure.update_layout(
+        xaxis_title='Bill Length (mm)',
+        yaxis_title = 'Flipper Length (mm)',
     )
 
     roc_figure = figs.serve_roc_curve(model=clf, X_test=X_test_scaled, y_test=y_test)
