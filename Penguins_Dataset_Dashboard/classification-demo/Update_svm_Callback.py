@@ -1,14 +1,11 @@
 import time
 
-import dash
 import dash.dash_table as dt
-from dash import Dash, dcc, html, Input, Output, State
+from dash import dcc, html, Input, Output
 import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.svm import SVC
-import palmerpenguins
 from sklearn.model_selection import train_test_split
-from Penguins_Dataset_Dashboard.utils import dash_reusable_components as drc
 from Penguins_Dataset_Dashboard.utils import figures as figs
 from data import penguins_df_cleaning
 
