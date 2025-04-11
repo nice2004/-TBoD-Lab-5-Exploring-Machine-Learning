@@ -6,10 +6,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from data import penguins_df_cleaning
+from .data import penguins_df_cleaning
+from Penguins_Dataset_Dashboard.Classification_demo import utils
+from Penguins_Dataset_Dashboard.Classification_demo.utils import figures as figs
+from Penguins_Dataset_Dashboard.Classification_demo.utils import dash_reusable_components as drc
 
-import utils.dash_reusable_components as drc
-import utils.figures as figs
 import dash.dash_table as dt
 
 

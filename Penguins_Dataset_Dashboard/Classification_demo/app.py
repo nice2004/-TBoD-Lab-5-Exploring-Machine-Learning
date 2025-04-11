@@ -1,8 +1,5 @@
 from dash import Dash
-from Callbacks import callbacks
-from layout import layout
-import Callbacks_Data
-from Callbacks_Data import callbacks
+from Callbacks_Data.Callbacks import callbacks
 from dash import dcc, html
 import utils.dash_reusable_components as drc
 
@@ -57,24 +54,6 @@ app.layout = html.Div(
                                 drc.Card(
                                     id="first-card",
                                     children=[
-                                        # drc.NamedDropdown(
-                                        #  name="Select Dataset",
-                                        # id="dropdown-select-dataset",
-                                        # options=[
-                                        #   {"label": "Moons", "value": "moons"},
-                                        #  {
-                                        #     "label": "Linearly Separable",
-                                        #    "value": "linear",
-                                        # },
-                                        # {
-                                        #   "label": "Circles",
-                                        #  "value": "circles",
-                                        # },
-                                        # ],
-                                        # clearable=False,
-                                        # searchable=False,
-                                        # value="moons",
-                                        # ),
                                         drc.NamedSlider(
                                             name="Sample Size",
                                             id="slider-dataset-sample-size",
