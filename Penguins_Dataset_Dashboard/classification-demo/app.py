@@ -1,19 +1,15 @@
 import time
 
 import dash
-import dash_bootstrap_components as dbc
-import importlib
 import dash.dash_table as dt
 from dash import Dash, dcc, html, Input, Output, State
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.svm import SVC
 import palmerpenguins
 from sklearn.model_selection import train_test_split
-
-import utils.dash_reusable_components as drc
-import utils.figures as figs
+from Penguins_Dataset_Dashboard.utils import dash_reusable_components as drc
+from Penguins_Dataset_Dashboard.utils import figures as figs
 
 app = Dash(
     __name__,
@@ -31,25 +27,25 @@ penguins_df_cleaning = penguins_df.dropna()
 print(penguins_df_cleaning.head())
 print(penguins_df_cleaning.columns)
 
-x_axis_dropdown = html.Div([
-    html.Label('Select X-Axis Column'),
-    dcc.Dropdown(
-        id='x_column_species',
-        options=[{'label': str(i), 'value': i} for i in sorted(penguins_df[remaining_columns])],
-        value=sorted(penguins_df.columns)[0],  # Default to first value
-        clearable=False,
-        style={'width': '100%'}
-    ), ])
+# x_axis_dropdown = html.Div([
+#     html.Label('Select X-Axis Column'),
+#     dcc.Dropdown(
+#         id='x_column_species',
+#         options=[{'label': str(i), 'value': i} for i in sorted(penguins_df[remaining_columns])],
+#         value=sorted(penguins_df.columns)[0],  # Default to first value
+#         clearable=False,
+#         style={'width': '100%'}
+#     ), ])
 
-y_axis_dropdown = html.Div([
-    html.Label('Select Y-Axis Column'),
-    dcc.Dropdown(
-        id='y_column_species',
-        options=[{'label': str(i), 'value': i} for i in sorted(penguins_df[remaining_columns])],
-        value=sorted(penguins_df.columns)[1],  # Default to first value
-        clearable=False,
-        style={'width': '100%'}
-    ), ])
+# y_axis_dropdown = html.Div([
+#     html.Label('Select Y-Axis Column'),
+#     dcc.Dropdown(
+#         id='y_column_species',
+#         options=[{'label': str(i), 'value': i} for i in sorted(penguins_df[remaining_columns])],
+#         value=sorted(penguins_df.columns)[1],  # Default to first value
+#         clearable=False,
+#         style={'width': '100%'}
+#     ), ])
 # print(penguins_df_cleaning[remaining_columns])
 # STARTING WORKING ON MACHINE LEARNING (YAYY)
 row_count = len(penguins_df_cleaning)
@@ -106,8 +102,6 @@ app.layout = html.Div(
                                 drc.Card(
                                     id="first-card",
                                     children=[
-                                        x_axis_dropdown,
-                                        y_axis_dropdown,
                                         drc.NamedSlider(
                                             name="Sample Size",
                                             id="slider-dataset-sample-size",
@@ -136,6 +130,11 @@ app.layout = html.Div(
                                             "Default Button",
                                             id="button-default",
                                             n_clicks=0,
+                                            style={
+
+                                                'color': 'white',
+
+                                            }
                                         ),
                                     ],
                                 ),
@@ -323,7 +322,6 @@ def reset_default(n_clicks):
 )
 def reset_threshold_center(n_clicks, figure):
     if n_clicks:
-        print('Debugging Z:', figure["data"][0]["z"])
         Z = np.array(figure["data"][0]["z"])
         value = -Z.min() / (Z.max() - Z.min())
     else:
@@ -370,7 +368,7 @@ def disable_slider_param_gamma_power(kernel):
         Input("slider-dataset-noise-level", "value"),
         Input("radio-svm-parameter-shrinking", "value"),
         Input("slider-threshold", "value"),
-       Input("slider-dataset-sample-size", "value"),
+        Input("slider-dataset-sample-size", "value"),
     ],
 )
 def update_svm_graph(
@@ -440,7 +438,9 @@ def update_svm_graph(
     )
     prediction_figure.update_layout(
         xaxis_title='Bill Length (mm)',
-        yaxis_title = 'Flipper Length (mm)',
+        yaxis_title='Flipper Length (mm)',
+       xaxis=dict(title=dict(standoff=50)),
+        margin=dict(l=50, r=50, t=50, b=150),
     )
 
     roc_figure = figs.serve_roc_curve(model=clf, X_test=X_test_scaled, y_test=y_test)

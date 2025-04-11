@@ -143,8 +143,10 @@ def serve_confusion_matrix_table(model, X_test, y_test, Z, threshold):
     y_pred_test = model.predict(X_test)
     if isinstance(y_test, pd.Series):
         y_test = y_test.values
+    species = {0: 'Adelie', 1: 'Chinstrap', 2: 'Gentoo'}
     matrix = metrics.confusion_matrix(y_true=y_test, y_pred=y_pred_test)
-    matrix_df = pd.DataFrame(matrix, index=[f'Class {i}' for i in range(len(matrix))],
-                             columns=[f'Pred {i}' for i in range(len(matrix[0]))])
+    labels = [species[i] for i in range(len(matrix))]
+    matrix_df = pd.DataFrame(matrix, index=[f'Class {label}' for label in labels],
+                             columns=[f'Pred {label}' for label in labels])
 
     return matrix_df
